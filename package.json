@@ -1,6 +1,6 @@
 {
   "name": "@vcmap/sensorthings",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Displays sensor data from SensorThings API as a VectorTiles Layer in the Map",
   "type": "module",
   "main": "dist/index.js",

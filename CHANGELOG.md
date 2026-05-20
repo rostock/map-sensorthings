@@ -1,3 +1,7 @@
+# v1.0.3
+
+- change request URLs to be encoded
+
 # v1.0.2
 
 - add vcs style nonce to apex chart

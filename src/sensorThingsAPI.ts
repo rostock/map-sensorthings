@@ -64,7 +64,7 @@ export type ObservedPropertyEntity = {
 
 async function fetchAllFromPagination<T>(url: string): Promise<T[]> {
   const entities: T[] = [];
-  let requestUrl: string | undefined = url;
+  let requestUrl: string | undefined = encodeURI(url);
 
   while (requestUrl) {
     const response: SensorThingsResponse<T> =
@@ -122,10 +122,9 @@ export async function queryDatastreamWithLatestObservation(
     $orderby=Observations/phenomenonTime desc&
     $top=1&
     $expand=Observations($top=1;$orderby=phenomenonTime desc)`;
-  const response =
-    await requestJson<SensorThingsResponse<DatastreamWithObservations>>(
-      requestUrl,
-    );
+  const response = await requestJson<
+    SensorThingsResponse<DatastreamWithObservations>
+  >(encodeURI(requestUrl));
   return response.value[0];
 }
 
@@ -140,10 +139,9 @@ export async function queryFirstObservation(
     $orderby=Observations/phenomenonTime asc&
     $top=1&
     $expand=Observations($top=1;$orderby=phenomenonTime asc)`;
-  const response =
-    await requestJson<SensorThingsResponse<DatastreamWithObservations>>(
-      requestUrl,
-    );
+  const response = await requestJson<
+    SensorThingsResponse<DatastreamWithObservations>
+  >(encodeURI(requestUrl));
   return response.value[0].Observations[0];
 }
 
@@ -192,6 +190,5 @@ export async function queryThingsWithLocations(
   queryOptions.push('$expand=Locations($top=1)');
   const baseUrl = url.endsWith('/') ? url : `${url}/`;
   const combinedUrl = `${baseUrl}Things?$top=1000&${queryOptions.join('&')}`;
-
   return fetchAllFromPagination(combinedUrl);
 }

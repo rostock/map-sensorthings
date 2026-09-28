@@ -1,3 +1,9 @@
+# v1.0.4
+
+- add datastream selection to the chart for things with multiple sensors
+- query observations per selected datastream instead of filtering by observed property
+- improve error handling and avoid duplicate requests when querying chart data
+
 # v1.0.3
 
 - change request URLs to be encoded

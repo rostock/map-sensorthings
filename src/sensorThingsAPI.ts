@@ -28,11 +28,16 @@ export type LocationEntity = {
 };
 
 export type DatastreamEntity = {
+  '@iot.id': number | string;
   name: string;
   description: string;
   unitOfMeasurement: {
     name: string;
     symbol?: string;
+    definition?: string;
+  };
+  ObservedProperty?: {
+    name: string;
     definition?: string;
   };
   observationType:
@@ -78,22 +83,40 @@ async function fetchAllFromPagination<T>(url: string): Promise<T[]> {
 }
 
 /**
- * This function queries the SensorThings API for the Datastreams and a specific observed property of a Thing.
+ * This function queries all Datastreams of a Thing including their ObservedProperty.
  * @param url The base URL of the SensorThings API
  * @param id The ID of the Thing
- * @param observedProperty The name of the observed property
- * @param startDate The start date of the observations
- * @param maxObservations The maximum number of queried observations. Will be applied as '$top'.
- * @returns The Datastreams with their Observations. The Observations are sorted by phenomenonTime in descending order and limited to {@link maxObservations}.
+ * @returns All Datastreams of the Thing.
  */
-export async function queryDatastreamsWithObservations(
+export async function queryDatastreamsOfThing(
   url: string,
   id: string,
-  observedProperty: string,
+): Promise<DatastreamEntity[]> {
+  const baseUrl = url.endsWith('/') ? url : `${url}/`;
+  const requestUrl = `${baseUrl}Things(${id})/Datastreams?
+    $select=@iot.id,name,description,unitOfMeasurement,observationType&
+    $expand=ObservedProperty($select=name)`;
+  return fetchAllFromPagination(requestUrl);
+}
+
+/**
+ * This function queries a Datastream of a Thing with its Observations within a time range.
+ * @param url The base URL of the SensorThings API
+ * @param thingId The ID of the Thing
+ * @param datastreamId The ID of the Datastream
+ * @param startDate The start date of the observations
+ * @param endDate The end date of the observations
+ * @param maxObservations The maximum number of queried observations. Will be applied as '$top'.
+ * @returns The Datastream with its Observations. The Observations are sorted by phenomenonTime in ascending order and limited to {@link maxObservations}.
+ */
+export async function queryDatastreamWithObservations(
+  url: string,
+  thingId: string,
+  datastreamId: string | number,
   startDate: Date,
   endDate: Date,
   maxObservations: number,
-): Promise<DatastreamWithObservations[]> {
+): Promise<DatastreamWithObservations | undefined> {
   const baseUrl = url.endsWith('/') ? url : `${url}/`;
   const start = new Date(startDate);
   start.setHours(0, 0, 0);
@@ -101,48 +124,52 @@ export async function queryDatastreamsWithObservations(
   end.setDate(endDate.getDate() + 1);
   end.setHours(0, 0, 0);
 
-  const requestUrl = `${baseUrl}Things(${id})/Datastreams?
-    $filter=ObservedProperty/name eq '${observedProperty}'&
-    $top=1&
+  const requestUrl = `${baseUrl}Things(${thingId})/Datastreams(${datastreamId})?
     $expand=Observations(
       $filter=phenomenonTime ge ${start.toISOString()} and phenomenonTime lt ${end.toISOString()};
       $top=${maxObservations};
       $orderby=phenomenonTime asc)`;
-  return fetchAllFromPagination(requestUrl);
+  return requestJson<DatastreamWithObservations>(encodeURI(requestUrl));
 }
 
-export async function queryDatastreamWithLatestObservation(
+/**
+ * This function queries a Datastream of a Thing with its latest Observation.
+ * @param url The base URL of the SensorThings API
+ * @param thingId The ID of the Thing
+ * @param datastreamId The ID of the Datastream
+ * @returns The Datastream with its latest Observation or undefined, if the Datastream does not exist.
+ */
+export async function queryLatestObservation(
   url: string,
-  id: string,
-  observedProperty: string,
-): Promise<DatastreamWithObservations> {
+  thingId: string,
+  datastreamId: string | number,
+): Promise<DatastreamWithObservations | undefined> {
   const baseUrl = url.endsWith('/') ? url : `${url}/`;
-  const requestUrl = `${baseUrl}Datastreams?
-    $filter=ObservedProperty/name eq '${observedProperty}' and Thing/id eq ${id}&
-    $orderby=Observations/phenomenonTime desc&
-    $top=1&
+  const requestUrl = `${baseUrl}Things(${thingId})/Datastreams(${datastreamId})?
     $expand=Observations($top=1;$orderby=phenomenonTime desc)`;
-  const response = await requestJson<
-    SensorThingsResponse<DatastreamWithObservations>
-  >(encodeURI(requestUrl));
-  return response.value[0];
+  return requestJson<DatastreamWithObservations>(encodeURI(requestUrl));
 }
 
+/**
+ * This function queries the first (oldest) Observation of a Datastream of a Thing.
+ * @param url The base URL of the SensorThings API
+ * @param thingId The ID of the Thing
+ * @param datastreamId The ID of the Datastream
+ * @returns The first Observation of the Datastream.
+ */
 export async function queryFirstObservation(
   url: string,
-  id: string,
-  observedProperty: string,
+  thingId: string,
+  datastreamId: string | number,
 ): Promise<ObservationEntity> {
   const baseUrl = url.endsWith('/') ? url : `${url}/`;
-  const requestUrl = `${baseUrl}Datastreams?
-    $filter=ObservedProperty/name eq '${observedProperty}' and Thing/id eq ${id}&
-    $orderby=Observations/phenomenonTime asc&
+  const requestUrl = `${baseUrl}Things(${thingId})/Datastreams(${datastreamId})/Observations?
     $top=1&
-    $expand=Observations($top=1;$orderby=phenomenonTime asc)`;
-  const response = await requestJson<
-    SensorThingsResponse<DatastreamWithObservations>
-  >(encodeURI(requestUrl));
-  return response.value[0].Observations[0];
+    $orderby=phenomenonTime asc`;
+  const response = await requestJson<SensorThingsResponse<ObservationEntity>>(
+    encodeURI(requestUrl),
+  );
+  return response.value[0];
 }
 
 export async function queryObservedProperties(

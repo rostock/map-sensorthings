@@ -20,6 +20,16 @@
       </tbody>
     </table>
     <v-divider />
+    <v-container v-if="hasMultipleDatastreams" class="px-1 py-0">
+      <v-row no-gutters>
+        <v-col cols="2">
+          <VcsLabel>{{ $st('sensorthings.sensor') }}</VcsLabel>
+        </v-col>
+        <v-col>
+          <VcsSelect v-model="selectedDatastreamId" :items="datastreamItems" />
+        </v-col>
+      </v-row>
+    </v-container>
     <v-container class="px-1 py-0">
       <v-row no-gutters>
         <v-col cols="2">
@@ -85,7 +95,12 @@
   import ApexChart from 'vue3-apexcharts';
   import type { ApexOptions } from 'apexcharts';
   import type { VcsUiApp } from '@vcmap/ui';
-  import { NotificationType, VcsDatePicker, VcsLabel } from '@vcmap/ui';
+  import {
+    NotificationType,
+    VcsDatePicker,
+    VcsLabel,
+    VcsSelect,
+  } from '@vcmap/ui';
   import { getLogger } from '@vcsuite/logger';
   import { useTheme } from 'vuetify';
   import apexLocales from './apexLocales.js';
@@ -94,12 +109,14 @@
     ThingFeatureProperties,
   } from './sensorThingsLayer.js';
   import type {
+    DatastreamEntity,
     DatastreamWithObservations,
     ObservationEntity,
   } from './sensorThingsAPI.js';
   import {
-    queryDatastreamsWithObservations,
-    queryDatastreamWithLatestObservation,
+    queryDatastreamWithObservations,
+    queryDatastreamsOfThing,
+    queryLatestObservation,
     queryFirstObservation,
   } from './sensorThingsAPI.js';
   import { name } from '../package.json';
@@ -156,6 +173,7 @@
       ApexChart,
       VcsLabel,
       VcsDatePicker,
+      VcsSelect,
       VOverlay,
       VIcon,
     },
@@ -190,6 +208,18 @@
       const latestObservation = ref<ObservationEntity | undefined>();
       const observedProperty = ref<string | undefined>();
       const loadingData = ref(false);
+      const datastreams = ref<DatastreamEntity[]>([]);
+      const selectedDatastreamId = ref<string | number>();
+      const latestObservations = new Map<string | number, ObservationEntity>();
+      const hasMultipleDatastreams = computed(
+        (): boolean => datastreams.value.length > 1,
+      );
+      const datastreamItems = computed(() =>
+        datastreams.value.map((datastream) => ({
+          title: datastream.name,
+          value: datastream['@iot.id'],
+        })),
+      );
       const chartOptions = computed(
         (): ApexOptions => ({
           chart: {
@@ -248,32 +278,47 @@
         }),
       );
       const calenderMinMax = ref<string[]>([]);
+      let lastRequestKey: string | undefined;
 
       async function updateChartData(): Promise<void> {
         const layer = app.layers.getByKey(props.layerName) as SensorThingsLayer;
 
-        if (!observedProperty.value || !startDate.value || !endDate.value) {
-          throw new Error('Input data for datastreams query is missing');
+        if (!selectedDatastreamId.value || !startDate.value || !endDate.value) {
+          chartSeries.value = [];
+          return;
         }
 
-        const datastreams = await queryDatastreamsWithObservations(
-          layer.url,
+        const requestKey = [
           props.featureId,
-          observedProperty.value,
-          startDate.value,
-          endDate.value,
-          maxObservations,
-        );
-
-        if (!datastreams.length) {
-          getLogger(name).warning(
-            `No datastreams for observed property: ${layer.observedProperty} available`,
-          );
+          selectedDatastreamId.value,
+          startDate.value.toISOString(),
+          endDate.value.toISOString(),
+        ].join('|');
+        if (requestKey === lastRequestKey) {
+          return;
         }
+        lastRequestKey = requestKey;
 
-        chartSeries.value = convertDatastreamsToSeries(datastreams);
+        try {
+          const datastream = await queryDatastreamWithObservations(
+            layer.url,
+            props.featureId,
+            selectedDatastreamId.value,
+            startDate.value,
+            endDate.value,
+            maxObservations,
+          );
 
-        datastreams.forEach((datastream) => {
+          if (!datastream) {
+            getLogger(name).warning(
+              `No datastream with id "${selectedDatastreamId.value}" for thing ${props.featureId} available`,
+            );
+            chartSeries.value = [];
+            return;
+          }
+
+          chartSeries.value = convertDatastreamsToSeries([datastream]);
+
           if (datastream.Observations.length >= maxObservations) {
             app.notifier.add({
               message: vm.$st('sensorthings.limitedObservations', {
@@ -292,67 +337,144 @@
               timeout: 10000,
             });
           }
-        });
+        } catch (error) {
+          lastRequestKey = undefined;
+          getLogger(name).warning(
+            'Querying datastream observations failed',
+            error,
+          );
+        }
       }
 
       async function updateGeneralData(): Promise<void> {
         const layer = app.layers.getByKey(props.layerName) as SensorThingsLayer;
-        if (!layer?.observedProperty) {
-          throw new Error('Layer does not exist or has no observed property');
-        }
-        observedProperty.value = layer.observedProperty;
-
-        const datastreamWithLatestObservation =
-          await queryDatastreamWithLatestObservation(
-            layer.url,
-            props.featureId,
-            layer.observedProperty,
-          );
-        yAxisTitle.value =
-          datastreamWithLatestObservation.unitOfMeasurement.name;
-        latestUnitSymbol.value =
-          datastreamWithLatestObservation.unitOfMeasurement.symbol;
-
-        latestObservation.value =
-          datastreamWithLatestObservation.Observations[0];
-
-        endDate.value = new Date(
-          ensurePointInTime(latestObservation.value.phenomenonTime),
-        );
-        startDate.value = calcInitialStartDate(
-          endDate.value,
-          props.initialDayObservationRange,
-        );
-
-        queryFirstObservation(
+        datastreams.value = await queryDatastreamsOfThing(
           layer.url,
           props.featureId,
-          layer.observedProperty,
-        )
+        );
+        latestObservations.clear();
+
+        if (!datastreams.value.length) {
+          getLogger(name).warning(
+            `No datastreams for thing ${props.featureId} available`,
+          );
+          selectedDatastreamId.value = undefined;
+          observedProperty.value = layer.observedProperty;
+          yAxisTitle.value = undefined;
+          latestUnitSymbol.value = undefined;
+          latestObservation.value = undefined;
+          chartSeries.value = [];
+          calenderMinMax.value = [];
+          startDate.value = undefined;
+          endDate.value = undefined;
+          return;
+        }
+
+        await Promise.all(
+          datastreams.value.map(async (datastream) => {
+            try {
+              const datastreamWithLatest = await queryLatestObservation(
+                layer.url,
+                props.featureId,
+                datastream['@iot.id'],
+              );
+              const latest = datastreamWithLatest?.Observations[0];
+              if (latest) {
+                latestObservations.set(datastream['@iot.id'], latest);
+              }
+            } catch (error) {
+              getLogger(name).warning(
+                `Querying latest observation for datastream "${datastream.name}" failed`,
+                error,
+              );
+            }
+          }),
+        );
+
+        const mostRecentId = [...latestObservations.entries()]
+          .sort(
+            (a, b) =>
+              new Date(ensurePointInTime(b[1].phenomenonTime)).getTime() -
+              new Date(ensurePointInTime(a[1].phenomenonTime)).getTime(),
+          )
+          .map(([id]) => id)[0];
+        const defaultDatastream =
+          (layer.observedProperty
+            ? datastreams.value.find(
+                (datastream) =>
+                  datastream.ObservedProperty?.name === layer.observedProperty,
+              )
+            : undefined) ??
+          datastreams.value.find(
+            (datastream) => datastream['@iot.id'] === mostRecentId,
+          ) ??
+          datastreams.value[0];
+        selectedDatastreamId.value = defaultDatastream['@iot.id'];
+      }
+
+      async function updateSelection(): Promise<void> {
+        const layer = app.layers.getByKey(props.layerName) as SensorThingsLayer;
+        const selected = datastreams.value.find(
+          (datastream) => datastream['@iot.id'] === selectedDatastreamId.value,
+        );
+
+        if (!selected) {
+          chartSeries.value = [];
+          latestObservation.value = undefined;
+          return;
+        }
+
+        observedProperty.value =
+          selected.ObservedProperty?.name ?? layer.observedProperty;
+        yAxisTitle.value = selected.unitOfMeasurement.name;
+        latestUnitSymbol.value = selected.unitOfMeasurement.symbol;
+
+        const latest = latestObservations.get(selected['@iot.id']);
+        latestObservation.value = latest;
+        calenderMinMax.value = [];
+
+        if (latest) {
+          endDate.value = new Date(ensurePointInTime(latest.phenomenonTime));
+          startDate.value = calcInitialStartDate(
+            endDate.value,
+            props.initialDayObservationRange,
+          );
+          calenderMinMax.value[1] = ensurePointInTime(latest.phenomenonTime);
+        } else {
+          startDate.value = undefined;
+          endDate.value = undefined;
+          chartSeries.value = [];
+        }
+
+        queryFirstObservation(layer.url, props.featureId, selected['@iot.id'])
           .then((observation) => {
             calenderMinMax.value[0] = ensurePointInTime(
               observation.phenomenonTime,
             );
-            if (latestObservation.value) {
-              calenderMinMax.value[1] = ensurePointInTime(
-                latestObservation.value.phenomenonTime,
-              );
-            }
           })
           .catch((e) => {
             getLogger(name).warning(`Querying first observation failed`, e);
           });
+
+        await updateChartData();
       }
 
       watch(
         (): string => props.featureId,
         async () => {
           loadingData.value = true;
-          await updateGeneralData();
-          loadingData.value = false;
+          try {
+            await updateGeneralData();
+          } finally {
+            loadingData.value = false;
+          }
         },
         { immediate: true },
       );
+
+      watch(selectedDatastreamId, async () => {
+        await updateSelection();
+      });
 
       watch([startDate, endDate], async () => {
         if (
@@ -372,6 +494,9 @@
         startDate,
         endDate,
         observedProperty,
+        selectedDatastreamId,
+        datastreamItems,
+        hasMultipleDatastreams,
         latestObservationValue: computed(
           () => latestObservation.value?.result ?? '-',
         ),

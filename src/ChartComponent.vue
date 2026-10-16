@@ -19,6 +19,15 @@
         </tr>
       </tbody>
     </table>
+    <v-container v-if="moreInformationLink" class="px-1 py-1">
+      <v-row no-gutters>
+        <v-col>
+          <VcsButton icon="$vcsExternalLink" @click="openMoreInformationLink">
+            {{ $st('sensorthings.moreInfo') }}
+          </VcsButton>
+        </v-col>
+      </v-row>
+    </v-container>
     <v-divider />
     <v-container v-if="hasMultipleDatastreams" class="px-1 py-0">
       <v-row no-gutters>
@@ -97,6 +106,7 @@
   import type { VcsUiApp } from '@vcmap/ui';
   import {
     NotificationType,
+    VcsButton,
     VcsDatePicker,
     VcsLabel,
     VcsSelect,
@@ -174,6 +184,7 @@
       VcsLabel,
       VcsDatePicker,
       VcsSelect,
+      VcsButton,
       VOverlay,
       VIcon,
     },
@@ -214,6 +225,25 @@
       const hasMultipleDatastreams = computed(
         (): boolean => datastreams.value.length > 1,
       );
+      const moreInformationLink = computed(
+        (): string | undefined =>
+          (
+            app.layers.getByKey(props.layerName) as
+              | SensorThingsLayer
+              | undefined
+          )?.moreInformationLink,
+      );
+
+      function openMoreInformationLink(): void {
+        if (moreInformationLink.value) {
+          window.open(
+            moreInformationLink.value,
+            '_blank',
+            'noopener,noreferrer',
+          );
+        }
+      }
+
       const datastreamItems = computed(() =>
         datastreams.value.map((datastream) => ({
           title: datastream.name,
@@ -497,6 +527,8 @@
         selectedDatastreamId,
         datastreamItems,
         hasMultipleDatastreams,
+        moreInformationLink,
+        openMoreInformationLink,
         latestObservationValue: computed(
           () => latestObservation.value?.result ?? '-',
         ),

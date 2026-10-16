@@ -13,6 +13,8 @@ export type SensorThingsOptions = Omit<
   url: string;
   observedProperty?: string;
   additionalFilters?: string;
+  /** Optional link, e.g. to a specialized application, rendered as button in the feature info. */
+  moreInformationLink?: string;
 };
 
 export type ThingFeatureProperties = {
@@ -54,6 +56,8 @@ export class SensorThingsLayer extends VectorTileLayer {
 
   private _additionalFilters?: string;
 
+  private _moreInformationLink?: string;
+
   constructor(options: SensorThingsOptions) {
     const defaultOptions = SensorThingsLayer.getDefaultOptions();
     const mergedOptions = {
@@ -67,6 +71,7 @@ export class SensorThingsLayer extends VectorTileLayer {
 
     this._observedProperty = options.observedProperty;
     this._additionalFilters = options.additionalFilters;
+    this._moreInformationLink = options.moreInformationLink;
   }
 
   async initialize(): Promise<void> {
@@ -124,6 +129,10 @@ export class SensorThingsLayer extends VectorTileLayer {
     return this._additionalFilters;
   }
 
+  get moreInformationLink(): string | undefined {
+    return this._moreInformationLink;
+  }
+
   toJSON(): SensorThingsOptions {
     const { tileProvider, ...rest } = super.toJSON();
     const json: SensorThingsOptions = { ...rest, url: this.url };
@@ -132,6 +141,9 @@ export class SensorThingsLayer extends VectorTileLayer {
     }
     if (this._additionalFilters) {
       json.additionalFilters = this._additionalFilters;
+    }
+    if (this._moreInformationLink) {
+      json.moreInformationLink = this._moreInformationLink;
     }
     return json;
   }

@@ -96,6 +96,19 @@
     );
   }
 
+  function isValidOptionalUrl(value: string): string | true {
+    if (!value || value === '') return true;
+    try {
+      const parsed = new URL(value);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        return true;
+      }
+    } catch (e) {
+      getLogger(name).debug('Invalid URL provided', e as string);
+    }
+    return 'sensorthings.editors.validation.validUrl';
+  }
+
   let cachedUrl: string | undefined;
   async function sendTestQuery(): Promise<void> {
     if (localConfig.value.url && localConfig.value.url !== cachedUrl) {
@@ -192,6 +205,21 @@
             >
               <template #prepend-inner>$filter=</template>
             </VcsTextField>
+          </v-col>
+        </v-row>
+        <v-row no-gutters>
+          <v-col>
+            <VcsLabel :html-for="`${cid}-moreInformationLink`">
+              {{ $t('sensorthings.editors.layer.moreInformationLink') }}
+            </VcsLabel>
+          </v-col>
+          <v-col>
+            <VcsTextField
+              :id="`${cid}-moreInformationLink`"
+              clearable
+              v-model.trim="localConfig.moreInformationLink"
+              :rules="[isValidOptionalUrl]"
+            />
           </v-col>
         </v-row>
       </template>

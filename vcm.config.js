@@ -109,6 +109,7 @@ export default {
             type: 'SensorThingsLayer',
             name: 'Chart Balloon Layer',
             url: 'https://iot.hamburg.de/v1.1',
+            moreInformationLink:'https://google.com',
             observedProperty: 'Anzahl verfügbarer Fahrräder',
             zIndex: 100,
             extent: {
@@ -126,6 +127,7 @@ export default {
             type: 'SensorThingsLayer',
             name: 'Dashboard Layer',
             url: 'https://iot.hamburg.de/v1.1',
+            moreInformationLink:'https://google.com',
             observedProperty: 'Anzahl verfügbarer Fahrräder',
             zIndex: 100,
             extent: {
@@ -143,6 +145,7 @@ export default {
             type: 'SensorThingsLayer',
             name: 'Dashboard Balloon Layer',
             url: 'https://iot.hamburg.de/v1.1',
+            moreInformationLink:'https://google.com',
             observedProperty: 'Anzahl verfügbarer Fahrräder',
             zIndex: 100,
             extent: {

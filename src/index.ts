@@ -149,6 +149,7 @@ export default function plugin(): VcsPlugin<
           dashboard: {
             openInNewTab: 'Open dashboard in new tab',
           },
+          moreInfo: 'More information',
           editors: {
             title: {
               chart: 'Sensorthings chart view - Editor',
@@ -195,6 +196,7 @@ export default function plugin(): VcsPlugin<
               fetchFailed:
                 'URL query failed. Please ensure that the URL is correct.',
               additionalFilters: 'Additional filters',
+              moreInformationLink: 'More information link (URL)',
             },
             validation: {
               isNumberGreaterZero: 'Number must be greater zero.',
@@ -223,6 +225,7 @@ export default function plugin(): VcsPlugin<
           dashboard: {
             openInNewTab: 'Dashboard in neuem Tab öffnen',
           },
+          moreInfo: 'Weitere Informationen',
           editors: {
             title: {
               chart: 'Sensorthings Diagramm Darstellung - Editor',
@@ -270,6 +273,7 @@ export default function plugin(): VcsPlugin<
               fetchFailed:
                 'Test-Abfrage hat fehlgeschlagen. Stellen Sie sicher, dass die URL korrekt ist.',
               additionalFilters: 'Zusätzliche Filter',
+              moreInformationLink: 'Link zu weiteren Informationen (URL)',
             },
             validation: {
               isNumberGreaterZero: 'Zahl muss größer Null sein.',

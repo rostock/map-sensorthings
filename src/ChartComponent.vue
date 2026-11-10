@@ -19,15 +19,6 @@
         </tr>
       </tbody>
     </table>
-    <v-container v-if="moreInformationLink" class="px-1 py-1">
-      <v-row no-gutters>
-        <v-col>
-          <VcsButton icon="$vcsExternalLink" @click="openMoreInformationLink">
-            {{ $st('sensorthings.moreInfo') }}
-          </VcsButton>
-        </v-col>
-      </v-row>
-    </v-container>
     <v-divider />
     <v-container v-if="hasMultipleDatastreams" class="px-1 py-0">
       <v-row no-gutters>
@@ -72,6 +63,21 @@
         <apex-chart type="line" :options="chartOptions" :series="chartSeries" />
       </v-col>
     </v-row>
+    <v-container v-if="moreInformationLink" class="px-1 py-2">
+      <v-row no-gutters>
+        <v-col class="d-flex justify-center">
+          <VcsButton
+            icon="$vcsExternalLink"
+            size="default"
+            density="default"
+            class="px-4"
+            @click="openMoreInformationLink"
+          >
+            {{ $st('sensorthings.moreInfo') }}
+          </VcsButton>
+        </v-col>
+      </v-row>
+    </v-container>
     <v-overlay
       :model-value="loadingData"
       contained

@@ -55,6 +55,24 @@ export default {
         ],
         layers: [
           {
+  "type": "VectorTileLayer",
+  "name": "Sensorbaeume",
+  "properties": {
+    "availableStyles": [
+      "TestStyle"
+    ]
+  },
+  "activeOnStartup": true,
+  "style": "TestStyle",
+  "highlightStyle": "TestStyle",
+  "tileProvider": {
+    "type": "MVTTileProvider",
+    "name": "ff0a700c-8e77-4122-8730-db3c995a1ed2",
+    "url": "http://dev13.sv.rostock.de:5001/collections/sensorbaeume/tiles/WebMercatorQuad/{z}/{y}/{x}?f=mvt"
+  },
+  "zIndex": 0
+},
+          {
             name: 'OpenStreetMapLayer(1)',
             url: 'https://osm.virtualcitymap.de/mapproxy/wmts/osm/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.png',
             type: 'WMTSLayer',
@@ -92,6 +110,7 @@ export default {
             type: 'SensorThingsLayer',
             name: 'Chart Layer',
             url: 'https://iot.hamburg.de/v1.1',
+            moreInformationLink: 'https://google.com',
             observedProperty: 'Anzahl verfügbarer Fahrräder',
             zIndex: 100,
             extent: {
@@ -114,6 +133,23 @@ export default {
             zIndex: 100,
             extent: {
               coordinates: [9.9385915, 53.55303, 9.952391, 53.565636],
+              projection: {
+                epsg: 4326,
+              },
+            },
+            properties: {
+              featureInfo: 'ChartBalloonFeatureInfoView',
+            },
+            activeOnStartup: true,
+          },
+          {
+            type: 'SensorThingsLayer',
+            name: 'Chart Balloon Layer Rostock',
+            url: 'https://svc16.sv.rostock.de:8090/FROST-Server/v1.1',
+            observedProperty: 'NDVI',
+            zIndex: 100,
+            extent: {
+              coordinates: [10.9385915, 53.55303, 12.952391, 56.565636],
               projection: {
                 epsg: 4326,
               },
